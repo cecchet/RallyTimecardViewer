@@ -1,7 +1,12 @@
 'use strict';
 
-// Spreadsheet used when no ?sheet= parameter or saved sheet is present.
-const DEFAULT_SHEET = '1FaOlH_cc78MCVtxx73FPpRmyu-uzJ8pHdOvJrFL3ivg';
+// Events from events.js, newest first; the newest loads when no ?sheet= is given.
+const EVENT_LIST = (typeof EVENTS !== 'undefined' ? EVENTS : [])
+  .map((e) => ({ name: e.name, id: sheetIdFrom(e.sheet) }))
+  .filter((e) => e.id)
+  .sort((a, b) => b.name.localeCompare(a.name));
+const DEFAULT_SHEET = EVENT_LIST.length ? EVENT_LIST[0].id : '';
+const eventName = (id) => (EVENT_LIST.find((e) => e.id === id) || {}).name || '';
 const TIMING_SHEET = 'First Entry - TIMING ONLY';
 const SUMMARY_SHEET = 'Summary - TIMING ONLY';
 const NSTAGES = 12;          // stages on the 3 time cards
@@ -366,6 +371,12 @@ function setCard(n) {
   renderCard(); syncUrl();
 }
 
+// Reflect the current sheet in the event dropdown and the link box
+function showSheet(id) {
+  $('eventSelect').value = EVENT_LIST.some((e) => e.id === id) ? id : '';
+  $('sheetInput').value = id ? `https://docs.google.com/spreadsheets/d/${id}/edit` : '';
+}
+
 function setStatus(msg, err) { const s = $('status'); s.textContent = msg; s.classList.toggle('err', !!err); }
 
 async function load(quiet) {
@@ -378,10 +389,9 @@ async function load(quiet) {
     ]);
     const timing = parseTiming(timingRows);
     if (!timing.cars.length) throw new Error(`No car blocks found in the "${TIMING_SHEET}" tab.`);
-    const data = { timing, names: parseSummary(summaryRows), title: new URLSearchParams(location.search).get('title') || '' };
+    const data = { timing, names: parseSummary(summaryRows), title: new URLSearchParams(location.search).get('title') || eventName(state.sheetId) };
     data.results = buildResults(data);
     state.data = data;
-    store('rtv.sheet', state.sheetId);
     renderAll();
     setStatus(`${timing.cars.length} cars · updated ${new Date().toLocaleTimeString()}`);
   } catch (e) {
@@ -398,11 +408,13 @@ function setAutoRefresh(on) {
 
 function init() {
   const p = new URLSearchParams(location.search);
-  state.sheetId = sheetIdFrom(p.get('sheet')) || sheetIdFrom(store('rtv.sheet')) || DEFAULT_SHEET;
+  state.sheetId = sheetIdFrom(p.get('sheet')) || DEFAULT_SHEET;
   state.car = (p.get('car') || '').trim();
   state.card = Math.min(3, Math.max(1, Number(p.get('card')) || 1));
   state.cls = p.get('class') || '';
-  $('sheetInput').value = `https://docs.google.com/spreadsheets/d/${state.sheetId}/edit`;
+  $('eventSelect').innerHTML = EVENT_LIST.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')
+    + '<option value="">Other spreadsheet (paste link below)</option>';
+  showSheet(state.sheetId);
   $('carInput').value = state.car;
   setTab(['card', 'overall', 'class'].includes(p.get('tab')) ? p.get('tab') : 'card');
   setCard(state.card);
@@ -411,7 +423,12 @@ function init() {
     e.preventDefault();
     const id = sheetIdFrom($('sheetInput').value);
     if (!id) { setStatus('That does not look like a Google Sheets link', true); return; }
-    state.sheetId = id; syncUrl(); load();
+    state.sheetId = id; showSheet(id); syncUrl(); load();
+  });
+  $('eventSelect').addEventListener('change', (e) => {
+    const id = e.target.value;
+    if (!id) { $('sheetInput').value = ''; $('sheetInput').focus(); return; }
+    state.sheetId = id; showSheet(id); syncUrl(); load();
   });
   $('cardForm').addEventListener('submit', (e) => e.preventDefault());
   $('carInput').addEventListener('input', (e) => { state.car = e.target.value.trim(); renderCard(); syncUrl(); });

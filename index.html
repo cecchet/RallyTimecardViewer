@@ -17,6 +17,8 @@
     <span class="status" id="status">Not loaded</span>
   </div>
   <form class="source" id="sourceForm">
+    <label for="eventSelect">Event</label>
+    <select id="eventSelect"></select>
     <label for="sheetInput">Timing spreadsheet</label>
     <div class="source-row">
       <input id="sheetInput" type="text" spellcheck="false" autocomplete="off"
@@ -69,6 +71,7 @@
   actual start + the longer of bogey or stage-time minutes, + transit.
 </footer>
 
+<script src="events.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

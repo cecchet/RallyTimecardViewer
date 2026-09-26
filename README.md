@@ -9,7 +9,15 @@ Start transit and ATC due times follow the same rule as the [Rally Timecard Calc
 
 ## Usage
 
-Open `index.html` from any static web host and paste the event spreadsheet link. The sheet must be shared as "Anyone with the link can view". It reads the `First Entry - TIMING ONLY` and `Summary - TIMING ONLY` tabs.
+Pick the event from the dropdown (newest first; the newest loads by default), or choose "Other spreadsheet" and paste a link. Each sheet must be shared as "Anyone with the link can view". It reads the `First Entry - TIMING ONLY` and `Summary - TIMING ONLY` tabs.
+
+### Adding an event
+
+Add a line to [`events.js`](events.js) with the spreadsheet's name and link. Name events `YYYY-MM Event Name` so the list sorts newest first; the name is also shown at the top of the time card.
+
+```js
+{ name: '2026-10 Next Event Gravel Trial', sheet: 'https://docs.google.com/spreadsheets/d/<id>/edit' },
+```
 
 URL parameters make shareable links:
 
