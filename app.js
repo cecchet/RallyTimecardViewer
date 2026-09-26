@@ -170,11 +170,12 @@ function buildResults(data) {
   });
   let lastStage = 0;
   list.forEach((r) => r.stages.forEach((s) => { if (s.didRun) lastStage = Math.max(lastStage, s.i + 1); }));
-  const best = [];
-  for (let i = 0; i < NSTAGES; i++) {
-    const t = list.map((r) => r.stages[i]).filter((s) => s.didRun && !s.dnf).map((s) => s.scored);
-    best[i] = t.length ? Math.min(...t) : null;
-  }
+  // Fastest real (not max-time) scored time per stage among the given cars
+  const bestOf = (cars) => Array.from({ length: NSTAGES }, (_, i) => {
+    const t = cars.map((r) => r.stages[i]).filter((s) => s.didRun && !s.dnf).map((s) => s.scored);
+    return t.length ? Math.min(...t) : null;
+  });
+  const best = bestOf(list);
   const rank = (arr) => {
     const sorted = arr.slice().sort((a, b) => (b.done - a.done) || (a.done ? a.total - b.total : 0) || (Number(a.car) - Number(b.car)));
     let pos = 0;
@@ -192,10 +193,15 @@ function buildResults(data) {
   const overall = rank(list);
   const classes = [...new Set(list.map((r) => r.cls).filter(Boolean))].sort();
   const byClass = {};
-  classes.forEach((c) => { byClass[c] = rank(list.filter((r) => r.cls === c)); });
+  const classBest = {};
+  classes.forEach((c) => {
+    const cars = list.filter((r) => r.cls === c);
+    byClass[c] = rank(cars);
+    classBest[c] = bestOf(cars);
+  });
   const posOf = {}; overall.forEach((x) => { posOf[x.r.car] = { overall: x.pos }; });
   classes.forEach((c) => byClass[c].forEach((x) => { posOf[x.r.car].cls = x.pos; posOf[x.r.car].clsCount = byClass[c].length; }));
-  return { list, overall, classes, byClass, best, lastStage, posOf };
+  return { list, overall, classes, byClass, best, classBest, lastStage, posOf };
 }
 
 /* ---------------- time card rendering ---------------- */
@@ -296,7 +302,8 @@ function renderCard() {
 }
 
 /* ---------------- results rendering ---------------- */
-function resultsTable(ranked, withClass) {
+// classBest: per-stage fastest in class, highlighted when not also the overall fastest
+function resultsTable(ranked, withClass, classBest) {
   const res = state.data.results;
   const n = Math.max(res.lastStage, 1);
   const head = `<tr><th class="l sticky">Pos</th><th class="l">Car</th><th class="l">Crew</th>${withClass ? '<th class="l">Class</th>' : ''}
@@ -304,8 +311,11 @@ function resultsTable(ranked, withClass) {
   const body = ranked.map(({ r, pos, gap, diff }) => {
     const cells = r.stages.slice(0, n).map((s) => {
       if (!s.didRun) return '<td class="gap">–</td>';
-      const cls = [s.dnf || s.penalty > 0 ? 'pen-t' : '', !s.dnf && s.scored === res.best[s.i] ? 'best' : ''].join(' ').trim();
-      const title = s.dnf ? 'No start/finish recorded (max time)' : s.penalty > 0 ? `Includes ${fmtDur(s.penalty)} penalty` : '';
+      const isBest = !s.dnf && s.scored === res.best[s.i];
+      const isClassBest = !isBest && classBest && !s.dnf && s.scored === classBest[s.i];
+      const cls = [s.dnf || s.penalty > 0 ? 'pen-t' : '', isBest ? 'best' : '', isClassBest ? 'cbest' : ''].join(' ').trim();
+      const title = s.dnf ? 'No start/finish recorded (max time)' : s.penalty > 0 ? `Includes ${fmtDur(s.penalty)} penalty`
+        : isBest ? 'Fastest overall' : isClassBest ? 'Fastest in class' : '';
       return `<td class="${cls}"${title ? ` title="${title}"` : ''}>${fmtDur(s.scored)}${s.dnf ? '*' : ''}</td>`;
     }).join('');
     return `<tr data-car="${esc(r.car)}"><td class="pos sticky">${pos ?? '–'}</td><td class="l car">${esc(r.car)}</td>
@@ -338,8 +348,9 @@ function renderClass() {
     `<button type="button" data-cls="${esc(c)}" aria-pressed="${state.cls === c}">${c ? esc(c) : 'All classes'}</button>`).join('');
   if (!res.lastStage) { out.innerHTML = noDataMsg(); return; }
   const shown = state.cls ? [state.cls] : res.classes;
-  out.innerHTML = shown.map((c) =>
-    `<div class="res-title"><h2>Class ${esc(c)}</h2><span>${res.byClass[c].length} cars</span></div>${resultsTable(res.byClass[c], false)}`).join('');
+  out.innerHTML = '<div class="legend"><span><i class="sw best"></i>Fastest overall</span><span><i class="sw cbest"></i>Fastest in class</span><span>* = max time</span></div>'
+    + shown.map((c) => `<div class="res-title"><h2>Class ${esc(c)}</h2><span>${res.byClass[c].length} cars</span></div>`
+      + resultsTable(res.byClass[c], false, res.classBest[c])).join('');
 }
 
 function renderAll() {

@@ -10,6 +10,7 @@
   --warn: #b35c00;
   --bad: #c0262d;
   --best-bg: #e3f1e7;
+  --cbest-bg: #dde8fb;
   --row-hover: #f0f3f9;
   /* The time card keeps a paper look in both themes */
   --paper: #ffffff;
@@ -32,6 +33,7 @@
     --warn: #f0a24b;
     --bad: #ff6b70;
     --best-bg: #1f3a29;
+    --cbest-bg: #1e2f4d;
     --row-hover: #262b33;
     --paper: #efede6;
     --paper-shade: #cfcdc6;
@@ -41,7 +43,7 @@
 :root[data-theme="dark"] {
   --bg: #161715; --surface: #202220; --text: #e9e8e3; --muted: #a3a29b; --border: #3a3c38;
   --accent: #6d9ff0; --accent-text: #0e1320; --good: #5fcf8d; --warn: #f0a24b; --bad: #ff6b70;
-  --best-bg: #1f3a29; --row-hover: #262b33; --paper: #efede6; --paper-shade: #cfcdc6;
+  --best-bg: #1f3a29; --cbest-bg: #1e2f4d; --row-hover: #262b33; --paper: #efede6; --paper-shade: #cfcdc6;
   color-scheme: dark;
 }
 
@@ -176,6 +178,12 @@ table.res { border-collapse: collapse; width: 100%; font-variant-numeric: tabula
 .res .crewcell small { color: var(--muted); }
 .res .tot { font-weight: 700; }
 .res td.best { background: var(--best-bg); font-weight: 700; }
+.res td.cbest { background: var(--cbest-bg); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); }
+.legend .sw.best { background: var(--best-bg); }
+.legend .sw.cbest { background: var(--cbest-bg); }
 .res td.pen-t { color: var(--bad); }
 .res .gap { color: var(--muted); }
 .res .sticky { position: sticky; left: 0; background: var(--surface); z-index: 1; }
