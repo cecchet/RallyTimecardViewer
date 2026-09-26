@@ -48,7 +48,7 @@ function el(tag, attrs, parent) {
  */
 function lineChart(host, cfg) {
   const wrap = document.createElement('div');
-  wrap.className = 'viz';
+  wrap.className = 'viz' + (cfg.wide ? ' wide' : '');
   wrap.innerHTML = `<div class="viz-head"><h3>${esc(cfg.title)}</h3><span>${esc(cfg.sub || '')}</span></div>`;
   host.appendChild(wrap);
   const plotBox = document.createElement('div');
@@ -92,8 +92,18 @@ function lineChart(host, cfg) {
     const pts = s.vals.map((v, k) => (v == null ? null : [x(k), y(v)])).filter(Boolean);
     if (!pts.length) return;
     const g = el('g', { class: 'series' + (s.color ? '' : ' muted') + (s.id === cfg.selected ? ' sel' : ''), style: s.color ? `--c:${s.color}` : '' }, lines);
-    if (pts.length > 1) el('path', { d: 'M' + pts.map((p) => p.map((c) => c.toFixed(1)).join(',')).join('L') }, g);
-    pts.forEach(([px, py]) => el('circle', { cx: px, cy: py, r: 4 }, g));
+    // one path per run of consecutive values, so a missing stage leaves a gap
+    let d = ''; let pen = false;
+    s.vals.forEach((v, k) => {
+      if (v == null) { pen = false; return; }
+      d += (pen ? 'L' : 'M') + x(k).toFixed(1) + ',' + y(v).toFixed(1); pen = true;
+    });
+    if (/L/.test(d)) el('path', { d }, g);
+    s.vals.forEach((v, k) => {
+      if (v == null) return;
+      const solo = s.vals[k - 1] == null && s.vals[k + 1] == null; // no line through it: always show the dot
+      el('circle', { cx: x(k), cy: y(v), r: 4, class: solo ? 'solo' : '' }, g);
+    });
     byId[s.id] = g;
   });
 
@@ -103,9 +113,17 @@ function lineChart(host, cfg) {
     if (k < 0 || s.vals[k] > yMax) return null;
     return { s, x: x(k) + 7, y: y(s.vals[k]) + 4 };
   }).filter(Boolean).sort((a, b) => a.y - b.y);
-  for (let i = 1; i < labels.length; i++) {
-    if (Math.abs(labels[i].x - labels[i - 1].x) < 30 && labels[i].y - labels[i - 1].y < 11) labels[i].y = labels[i - 1].y + 11;
-  }
+  // push each label below any already-placed label it would collide with (same area horizontally)
+  labels.forEach((l, i) => {
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let j = 0; j < i; j++) {
+        const o = labels[j];
+        if (Math.abs(l.x - o.x) < 34 && Math.abs(l.y - o.y) < 12) { l.y = o.y + 12; moved = true; }
+      }
+    }
+  });
   const lg = el('g', { class: 'endlabels' }, svg);
   labels.forEach((l) => {
     const t = el('text', { x: l.x, y: l.y, class: l.s.id === cfg.selected ? 'sel' : '' }, lg);
@@ -223,6 +241,35 @@ function renderGraphs(host, cars, opts) {
     series: prog.map((p) => ({ id: p.r.car, color: colorOf(p.r), label: labelOf(p), vals: p.gap })),
     yMin: 0, yMax, yTicks: gTicks, yFmt: fmtGapTick, rows, note,
   });
+
+  // Raw stage time: start to finish as timed, no penalties / max times; fastest at the top
+  const raw = (p, k) => { const s = p.r.stages[k]; return s.didRun && s.stage != null ? s.stage : null; };
+  const raws = prog.flatMap((p) => Array.from({ length: n }, (_, k) => raw(p, k))).filter((v) => v != null);
+  if (raws.length) {
+    const lo = Math.min(...raws); const hi = Math.max(...raws);
+    const rStep = niceStep(Math.max(hi - lo, 1), 6, GAP_STEPS);
+    const rMin = Math.floor(lo / rStep) * rStep;
+    const rMax = Math.max(rMin + rStep, Math.ceil(hi / rStep) * rStep);
+    const rTicks = []; for (let v = rMin; v <= rMax; v += rStep) rTicks.push(v);
+    const noRaw = prog.filter((p) => p.r.stages.slice(0, n).some((s) => s.dnf)).map((p) => '#' + p.r.car);
+    lineChart(grid, {
+      ...common, wide: true, title: 'Raw stage time', sub: 'start to finish as timed, before penalties and max times · fastest at the top',
+      series: prog.map((p) => ({ id: p.r.car, color: colorOf(p.r), label: labelOf(p), vals: Array.from({ length: n }, (_, k) => raw(p, k)) })),
+      yMin: rMin, yMax: rMax, yTicks: rTicks, yFmt: (v) => fmtDur(v).replace(/\.0$/, ''),
+      rows: (k) => {
+        const timed = prog.filter((p) => raw(p, k) != null).sort((a, b) => raw(a, k) - raw(b, k));
+        const best = timed.length ? raw(timed[0], k) : 0;
+        return timed.map((p, i) => ({
+          id: p.r.car, color: colorOf(p.r),
+          text: `${i + 1}. #${p.r.car} ${surname(p.r.driver)}`,
+          value: fmtDur(raw(p, k)) + (i ? `  +${fmtDur(raw(p, k) - best)}` : ''),
+        })).concat(prog.filter((p) => p.r.stages[k].dnf).map((p) => ({
+          id: p.r.car, color: colorOf(p.r), text: `#${p.r.car} ${surname(p.r.driver)}`, value: 'no time',
+        })));
+      },
+      note: noRaw.length ? `Gaps in a line are stages with no start/finish recorded (${noRaw.join(', ')}).` : '',
+    });
+  }
   return byCar;
 }
 

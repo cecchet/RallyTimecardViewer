@@ -208,7 +208,7 @@ table.res { border-collapse: collapse; width: 100%; font-variant-numeric: tabula
 #tab-class .chips { margin-bottom: 4px; }
 .legend .sw.line { height: 3px; width: 16px; border: none; border-radius: 2px; }
 .viz-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 10px; }
-@media (min-width: 1000px) { .viz-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) { .viz-grid { grid-template-columns: 1fr 1fr; } .viz.wide { grid-column: 1 / -1; } }
 .viz { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 8px; min-width: 0; }
 .viz-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 4px 6px; }
 .viz-head h3 { margin: 0; font-size: 14px; }
@@ -222,7 +222,7 @@ table.res { border-collapse: collapse; width: 100%; font-variant-numeric: tabula
 .viz .series circle { fill: var(--c, var(--line-muted)); stroke: var(--surface); stroke-width: 2; opacity: 0; }
 .viz .series.muted path { stroke: var(--line-muted); }
 .viz .series.sel path { stroke-width: 3.5; }
-.viz .series.sel circle, .viz .series.hot circle { opacity: 1; }
+.viz .series.sel circle, .viz .series.hot circle, .viz .series circle.solo { opacity: 1; }
 .viz svg.focus .series:not(.hot) { opacity: .25; }
 .viz svg.focus .series.hot path { stroke-width: 3.5; }
 .viz .series.muted.hot path, .viz .series.muted.sel path { stroke: var(--text); }
