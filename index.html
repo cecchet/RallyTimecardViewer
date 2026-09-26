@@ -56,10 +56,24 @@
   </section>
 
   <section id="tab-overall" class="panel" hidden>
+    <div class="view-row">
+      <div class="seg view-seg" role="radiogroup" aria-label="Show as">
+        <button type="button" data-view="table" aria-pressed="true">Table</button>
+        <button type="button" data-view="graph" aria-pressed="false">Graph</button>
+      </div>
+      <label class="check range-check"><input type="checkbox" class="full-range"> Full range</label>
+    </div>
     <div id="overallOut"></div>
   </section>
 
   <section id="tab-class" class="panel" hidden>
+    <div class="view-row">
+      <div class="seg view-seg" role="radiogroup" aria-label="Show as">
+        <button type="button" data-view="table" aria-pressed="true">Table</button>
+        <button type="button" data-view="graph" aria-pressed="false">Graph</button>
+      </div>
+      <label class="check range-check"><input type="checkbox" class="full-range"> Full range</label>
+    </div>
     <div class="chips" id="classChips"></div>
     <div id="classOut"></div>
   </section>
@@ -72,6 +86,7 @@
 </footer>
 
 <script src="events.js?v=2026-09-26-3"></script>
+<script src="charts.js?v=2026-09-26-3"></script>
 <script src="app.js?v=2026-09-26-3"></script>
 </body>
 </html>

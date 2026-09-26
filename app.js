@@ -335,8 +335,13 @@ function renderOverall() {
   const out = $('overallOut');
   if (!state.data) { out.innerHTML = '<div class="msg">Load a timing spreadsheet to begin.</div>'; return; }
   const res = state.data.results;
-  out.innerHTML = `<div class="res-title"><h2>Overall</h2><span>${res.list.length} cars${res.lastStage ? ` · after SS${res.lastStage}` : ''} · fastest stage times highlighted · * = max time</span></div>`
-    + (res.lastStage ? resultsTable(res.overall, true) : noDataMsg());
+  const graph = state.view === 'graph';
+  out.innerHTML = `<div class="res-title"><h2>Overall</h2><span>${res.list.length} cars${res.lastStage ? ` · after SS${res.lastStage}` : ''}`
+    + (graph ? ' · hover or tap a stage for the field' : ' · fastest stage times highlighted · * = max time') + '</span></div>';
+  if (!res.lastStage) { out.innerHTML += noDataMsg(); return; }
+  if (!graph) { out.innerHTML += resultsTable(res.overall, true); return; }
+  if (!out.clientWidth) return; // hidden tab: drawn when shown, charts need a width
+  renderOverallGraph(out);
 }
 
 function renderClass() {
@@ -348,6 +353,15 @@ function renderClass() {
     `<button type="button" data-cls="${esc(c)}" aria-pressed="${state.cls === c}">${c ? esc(c) : 'All classes'}</button>`).join('');
   if (!res.lastStage) { out.innerHTML = noDataMsg(); return; }
   const shown = state.cls ? [state.cls] : res.classes;
+  if (state.view === 'graph') {
+    out.innerHTML = '';
+    if (!out.clientWidth) return; // hidden tab: drawn when shown, charts need a width
+    shown.forEach((c) => {
+      out.insertAdjacentHTML('beforeend', `<div class="res-title"><h2>Class ${esc(c)}</h2><span>${res.byClass[c].length} cars</span></div>`);
+      renderClassGraph(out, c);
+    });
+    return;
+  }
   out.innerHTML = '<div class="legend"><span><i class="sw best"></i>Fastest overall</span><span><i class="sw cbest"></i>Fastest in class</span><span>* = max time</span></div>'
     + shown.map((c) => `<div class="res-title"><h2>Class ${esc(c)}</h2><span>${res.byClass[c].length} cars</span></div>`
       + resultsTable(res.byClass[c], false, res.classBest[c])).join('');
@@ -367,6 +381,7 @@ function syncUrl() {
   if (state.car) p.set('car', state.car);
   if (state.card !== 1) p.set('card', state.card);
   if (state.cls) p.set('class', state.cls);
+  if (state.view === 'graph') p.set('view', 'graph');
   history.replaceState(null, '', p.toString() ? '?' + p : location.pathname);
 }
 
@@ -375,6 +390,16 @@ function setTab(tab) {
   document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   ['card', 'overall', 'class'].forEach((t) => { $('tab-' + t).hidden = t !== tab; });
   syncUrl();
+}
+function setView(view) {
+  state.view = view;
+  document.querySelectorAll('.view-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+  document.querySelectorAll('.range-check').forEach((l) => { l.hidden = view !== 'graph'; });
+  renderOverall(); renderClass(); syncUrl();
+}
+function openCard(car) {
+  state.car = car; $('carInput').value = car;
+  renderCard(); setTab('card'); window.scrollTo(0, 0);
 }
 function setCard(n) {
   state.card = n;
@@ -423,12 +448,15 @@ function init() {
   state.car = (p.get('car') || '').trim();
   state.card = Math.min(3, Math.max(1, Number(p.get('card')) || 1));
   state.cls = p.get('class') || '';
+  state.view = p.get('view') === 'graph' ? 'graph' : 'table';
+  state.fullRange = false;
   $('eventSelect').innerHTML = EVENT_LIST.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')
     + '<option value="">Other spreadsheet (paste link below)</option>';
   showSheet(state.sheetId);
   $('carInput').value = state.car;
   setTab(['card', 'overall', 'class'].includes(p.get('tab')) ? p.get('tab') : 'card');
   setCard(state.card);
+  setView(state.view);
 
   $('sourceForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -451,10 +479,30 @@ function init() {
   });
   // Clicking a results row opens that car's time card
   document.querySelectorAll('#overallOut, #classOut').forEach((el) => el.addEventListener('click', (e) => {
-    const tr = e.target.closest('tr[data-car]'); if (!tr) return;
-    state.car = tr.dataset.car; $('carInput').value = state.car;
-    renderCard(); setTab('card'); window.scrollTo(0, 0);
+    const tr = e.target.closest('tr[data-car]'); if (tr) openCard(tr.dataset.car);
   }));
+  document.querySelectorAll('.view-seg').forEach((seg) => seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (b) setView(b.dataset.view);
+  }));
+  document.querySelectorAll('.full-range').forEach((cb) => cb.addEventListener('change', (e) => {
+    state.fullRange = e.target.checked;
+    document.querySelectorAll('.full-range').forEach((o) => { o.checked = state.fullRange; });
+    renderOverall(); renderClass();
+  }));
+  // Charts are drawn at the container's width: redraw when that width changes,
+  // including hidden -> shown (tab switch, page opened in a background tab)
+  if (window.ResizeObserver) {
+    const redraw = { overallOut: renderOverall, classOut: renderClass };
+    const widths = {}; const timers = {};
+    const ro = new ResizeObserver((entries) => entries.forEach((en) => {
+      const id = en.target.id; const w = Math.round(en.contentRect.width);
+      if (w === widths[id]) return;
+      widths[id] = w;
+      clearTimeout(timers[id]);
+      timers[id] = setTimeout(() => { if (state.view === 'graph' && w) redraw[id](); }, 120);
+    }));
+    ro.observe($('overallOut')); ro.observe($('classOut'));
+  }
   const auto = store('rtv.auto') === '1';
   $('autoRefresh').checked = auto;
   $('autoRefresh').addEventListener('change', (e) => setAutoRefresh(e.target.checked));
