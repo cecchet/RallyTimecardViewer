@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rally Timecard Viewer</title>
+<meta name="description" content="View a rally car's time card and live overall / class results straight from the timing spreadsheet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Rally Timecard Viewer</h1>
+    <span class="status" id="status">Not loaded</span>
+  </div>
+  <form class="source" id="sourceForm">
+    <label for="sheetInput">Timing spreadsheet</label>
+    <div class="source-row">
+      <input id="sheetInput" type="text" spellcheck="false" autocomplete="off"
+             placeholder="Paste the Google Sheets link or ID">
+      <button type="submit">Load</button>
+    </div>
+    <label class="check"><input type="checkbox" id="autoRefresh"> Auto-refresh every minute</label>
+  </form>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="card" aria-selected="true">Time card</button>
+  <button role="tab" data-tab="overall" aria-selected="false">Overall</button>
+  <button role="tab" data-tab="class" aria-selected="false">By class</button>
+</nav>
+
+<main>
+  <section id="tab-card" class="panel">
+    <form class="card-controls" id="cardForm">
+      <div class="field">
+        <label for="carInput">Car #</label>
+        <input id="carInput" type="text" inputmode="numeric" list="carList" autocomplete="off">
+        <datalist id="carList"></datalist>
+      </div>
+      <div class="field">
+        <span class="field-label">Time card</span>
+        <div class="seg" id="cardSeg" role="radiogroup">
+          <button type="button" data-card="1" aria-pressed="true">SS 1–4</button>
+          <button type="button" data-card="2" aria-pressed="false">SS 5–8</button>
+          <button type="button" data-card="3" aria-pressed="false">SS 9–12</button>
+        </div>
+      </div>
+    </form>
+    <div id="cardOut"></div>
+  </section>
+
+  <section id="tab-overall" class="panel" hidden>
+    <div id="overallOut"></div>
+  </section>
+
+  <section id="tab-class" class="panel" hidden>
+    <div class="chips" id="classChips"></div>
+    <div id="classOut"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  Times are read live from the timing spreadsheet. Start transit and ATC due times are computed the same way as the
+  <a href="https://github.com/cecchet/RallyTimecardCalculator">Rally Timecard Calculator</a>:
+  actual start + the longer of bogey or stage-time minutes, + transit.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
