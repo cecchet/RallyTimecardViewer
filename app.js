@@ -160,16 +160,25 @@ function stageInfo(car, cfg, i) {
 /* ---------------- results ---------------- */
 function buildResults(data) {
   const { cfg, cars } = data.timing;
-  const list = cars.map((c) => {
+  const all = cars.map((c) => {
     const st = []; for (let i = 0; i < NSTAGES; i++) st.push(stageInfo(c, cfg, i));
+    return { c, st };
+  });
+  // Latest stage anyone has actually been timed on. A car that retires gets max times
+  // pre-filled for every remaining stage; those must not count until the field gets there.
+  let lastStage = 0;
+  all.forEach(({ st }) => st.forEach((s) => { if (s.didRun && !s.dnf) lastStage = Math.max(lastStage, s.i + 1); }));
+  const list = all.map(({ c, st }) => {
     const n = data.names[c.car] || {};
-    const done = st.filter((s) => s.didRun).length;
-    const sum = st.reduce((a, s) => a + (s.didRun ? s.scored : 0), 0);
-    const total = c.total && c.total > 0 ? c.total : sum;
+    const upTo = st.slice(0, lastStage);
+    const done = upTo.filter((s) => s.didRun).length;
+    const sum = upTo.reduce((a, s) => a + (s.didRun ? s.scored : 0), 0);
+    // keep anything the sheet's total adds beyond stage times (e.g. chicane penalties)
+    const sumAll = st.reduce((a, s) => a + (s.didRun ? s.scored : 0), 0);
+    const extra = c.total && c.total > sumAll ? c.total - sumAll : 0;
+    const total = sum + extra;
     return { car: c.car, cls: c.cls && c.cls !== '#N/A' ? c.cls : (n.cls || ''), driver: n.driver || '', codriver: n.codriver || '', stages: st, done, total, raw: c };
   });
-  let lastStage = 0;
-  list.forEach((r) => r.stages.forEach((s) => { if (s.didRun) lastStage = Math.max(lastStage, s.i + 1); }));
   // Fastest real (not max-time) scored time per stage among the given cars
   const bestOf = (cars) => Array.from({ length: NSTAGES }, (_, i) => {
     const t = cars.map((r) => r.stages[i]).filter((s) => s.didRun && !s.dnf).map((s) => s.scored);
@@ -225,7 +234,11 @@ function renderStage(s, next) {
   const fS = s.finish == null ? null : (s.finish % 60).toFixed(1);
   const [stM, stS] = secParts(s.stage);
   const [tH, tM] = hmParts(s.startTransit);
-  const [dH, dM] = hmParts(s.atcDue);
+  // Next ATC box: the time the car actually checked in when known (what the crew worked out,
+  // right or wrong), otherwise the computed due time.
+  const checkedIn = next && next.atcIn != null ? next.atcIn : null;
+  const [dH, dM] = hmParts(checkedIn ?? s.atcDue);
+  const atcOff = checkedIn != null && s.atcDue != null && checkedIn !== s.atcDue;
   const n = s.i + 1;
 
   const notes = [];
@@ -234,8 +247,8 @@ function renderStage(s, next) {
     const d = next.atcIn - s.atcDue;
     const lbl = `ATC ${n + 1} IN ${fmtHM(next.atcIn)}`;
     if (d === 0) notes.push(`<span class="ok">${lbl} — on time</span>`);
-    else if (d > 0) notes.push(`<span class="late">${lbl} — ${d} min late</span>`);
-    else notes.push(`<span class="early">${lbl} — ${-d} min early</span>`);
+    else if (d > 0) notes.push(`<span class="late">${lbl} — ${d} min late (due ${fmtHM(s.atcDue)})</span>`);
+    else notes.push(`<span class="early">${lbl} — ${-d} min early (due ${fmtHM(s.atcDue)})</span>`);
   }
   if (!s.dnf && s.didRun && s.stage != null && s.scored < s.stage - 0.05) notes.push(`<span class="early">Scored time capped at ${fmtDur(s.scored)} (actual ${fmtDur(s.stage)})</span>`);
   if (s.penalty > 0) notes.push(`<span class="late">Time penalty ${fmtDur(s.penalty)}</span>`);
@@ -253,7 +266,8 @@ function renderStage(s, next) {
         ${box('Stage Time', [[stM, 'M'], [stS, 'S.1/10', true]], 'Competitor Use')}
         ${box('Start Transit', [[tH, 'H'], [tM, 'M']], 'Competitor Use')}
         ${box('Transit', [[s.transit, 'Min']], '', 'pre')}
-        ${box(`ATC ${n + 1} IN`, [[dH, 'H'], [dM, 'M']], 'Competitor Use')}
+        ${box(`ATC ${n + 1} IN`, [[dH, 'H'], [dM, 'M']],
+          atcOff ? `Due <b>${fmtHM(s.atcDue)}</b>` : checkedIn == null && s.atcDue != null ? 'Computed' : 'Competitor Use', atcOff ? 'off' : '')}
       </div>
     </div>
     ${notes.length ? `<div class="ss-note">${notes.join('')}</div>` : ''}

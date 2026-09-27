@@ -156,6 +156,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 16px; }
 .cell .v { font-size: 22px; }
 .cell .u { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: 8px; color: #444; }
 .cell .v.dim { color: #9a9a9a; font-family: Inter, sans-serif; font-size: 13px; font-weight: 500; }
+.bx.off .cells { outline: 2.5px solid var(--pen); outline-offset: 1px; }
+.bx.off .ft { color: var(--pen); font-size: 10px; }
 .bx.pre .cell .v { color: var(--paper-ink); font-family: Inter, sans-serif; font-weight: 700; font-size: 18px; }
 
 .ss-note { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: 11.5px; color: #333; }
