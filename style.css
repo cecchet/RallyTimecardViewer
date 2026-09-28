@@ -247,7 +247,17 @@ table.res { border-collapse: collapse; width: 100%; font-variant-numeric: tabula
 .viz-tip small { display: block; margin-top: 4px; color: var(--muted); }
 .viz-note { margin: 6px 4px 0; font-size: 12px; color: var(--muted); }
 
-.foot { max-width: 1180px; margin: 12px auto 32px; padding: 0 16px; color: var(--muted); font-size: 12.5px; }
+.foot { max-width: 1180px; margin: 12px auto 24px; padding: 0 16px; color: var(--muted); font-size: 12.5px; }
+
+.sponsor {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  border-top: 1px solid var(--border); padding: 16px 16px 24px; font-size: 12px; color: var(--muted);
+}
+.sponsor p { margin: 0; max-width: 560px; }
+.sponsor a { color: inherit; }
+.sponsor a:hover { color: var(--text); }
+.sponsor img { display: block; border: 0; }
+.sponsor .disclosure { font-size: 11px; opacity: 0.8; }
 
 @media (max-width: 640px) {
   .top { padding: 12px 16px; }
